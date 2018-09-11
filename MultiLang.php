@@ -101,7 +101,7 @@ private function not_yet_translated($lookup_word){
 	}
 
 
-	if($this->untranslated_logging){
+	if(!$this->USE_COOKIES&$this->untranslated_logging){
 
 		$contents = file_get_contents($this->lang_file);
 
