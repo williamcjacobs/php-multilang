@@ -8,7 +8,8 @@ class MultiLang{
 			$dictionary,
 			$languages_dir = __DIR__.'/languages/',
 			$DEFAULT_LANGUAGE = 'EN',
-			$untranslated_logging = true;
+			$untranslated_logging = true,
+			$last_translated = false;
 
 	//The function takes two optional parameters.
 
@@ -65,6 +66,8 @@ class MultiLang{
 				}
 			}
 
+			$this->last_translated = true;
+
 			return $trWord;
 		
 		}else{
@@ -74,80 +77,102 @@ class MultiLang{
 			$word = str_replace("{{", '', $word);
 			$word = str_replace("}}", '', $word);
 
+			$this->last_translated = false;
+
 			return $word;
 		}
 
 	}
 
-private function not_yet_translated($lookup_word){
+	public function set_directory($path){
 
-	if (!file_exists($this->languages_dir)) {
-
-		mkdir($this->languages_dir, 0777, true);
+		return ($this->languages_dir = $path);
 	}
 
-	if (!$this->USE_COOKIES & !file_exists($this->lang_file)) {
+	public function set_untranslated_logging($bool=false){
 
-		$example_contents = "<?php\n\n\n$".strtoupper($this->lang)."=[\n    'example text'=>'例文',\n     ];";
+		return ($this->untranslated_logging = $bool);
+	}
 
-		if($this->untranslated_logging){
+	private function not_yet_translated($lookup_word){
 
-			$example_contents .= "\n\n\n/** Not Yet Translated **/\n\n// ".$lookup_word;
+		if (!file_exists($this->languages_dir)&$this->untranslated_logging) {
+
+			mkdir($this->languages_dir, 0777, true);
 		}
 
-		file_put_contents($this->lang_file, $example_contents);
-		
-		return;
-	}
+		if (!$this->USE_COOKIES & !file_exists($this->lang_file)) {
+
+			$example_contents = "<?php\n\n\n$".strtoupper($this->lang)."=[\n    'example text'=>'例文',\n     ];";
+
+			if($this->untranslated_logging){
+
+				$example_contents .= "\n\n\n/** Not Yet Translated **/\n\n// ".$lookup_word;
+			
+				file_put_contents($this->lang_file, $example_contents);
+			}
+
+			return;
+		}
 
 
-	if(!$this->USE_COOKIES&$this->untranslated_logging){
+		if(!$this->USE_COOKIES&$this->untranslated_logging){
 
-		$contents = file_get_contents($this->lang_file);
+			$contents = file_get_contents($this->lang_file);
 
-		if (strpos($contents, '// '.$lookup_word)===false) {
-		
-			file_put_contents($this->lang_file, "\n// ".$lookup_word, FILE_APPEND);
+			if (strpos($contents, '// '.$lookup_word)===false) {
+			
+				file_put_contents($this->lang_file, "\n// ".$lookup_word, FILE_APPEND);
+			}
 		}
 	}
 
-}
+	public function setLanguage($language_code, $duration=604800){
 
-public function setLanguage($language_code, $duration=604800){
+		// Cookie Duration defaults to 1 week.
 
-	// Cookie Duration defaults to 1 week.
+		$language_code = ''.$language_code;
 
-	$language_code = ''.$language_code;
+		if(strlen($language_code)>2){
 
-	if(strlen($language_code)>2){
-
-		//Only two-character language codes are accepted.
-		$language_code = $DEFAULT_LANGUAGE;
-	}
-
-	$this->lang = strtoupper($language_code);
-
-	if($this->USE_COOKIES){
-	
-		setcookie('lang', $this->lang, $duration);
-	}else{
-
-		if(!isset($_SESSION)){
-		
-			session_start();
+			//Only two-character language codes are accepted.
+			$language_code = $DEFAULT_LANGUAGE;
 		}
 
-		$_SESSION['lang'] = $this->lang;
+		$this->lang = strtoupper($language_code);
+
+		if($this->USE_COOKIES){
+		
+			setcookie('lang', $this->lang, $duration);
+
+		}else{
+
+			if(!isset($_SESSION)){
+			
+				session_start();
+			}
+
+			$_SESSION['lang'] = $this->lang;
+		}
+
+		$this->lang_file = $this->languages_dir.$this->lang.'.php';
+
+		if(file_exists($this->lang_file)){
+
+			require $this->lang_file;
+
+			$this->dictionary = ${$this->lang};
+		}
 	}
 
-	$this->lang_file = $this->languages_dir.$this->lang.'.php';
+	public function translated(){
 
-	if(file_exists($this->lang_file)){
-
-		require $this->lang_file;
-
-		$this->dictionary = ${$this->lang};
+		return $this->last_translated;
 	}
-}
+
+	public function language(){
+
+		return $this->lang;
+	}
 
 }
